@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <title>Wettbuch</title>
+  <meta name="description" content="Private Wetten mit Quoten, Gewinnberechnung und Provision verwalten." />
+
+  <!-- iOS / Home-Screen -->
+  <meta name="theme-color" content="#0b7d3e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Wettbuch" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Hidden file input for JSON import -->
+  <input type="file" id="import-file" accept="application/json,.json" hidden />
+
+  <script src="app.js"></script>
+</body>
+</html>

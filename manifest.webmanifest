@@ -1,0 +1,19 @@
+{
+  "name": "Wettbuch",
+  "short_name": "Wettbuch",
+  "description": "Private Wetten mit Quoten, Gewinnberechnung und Provision verwalten.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1115",
+  "theme_color": "#0b7d3e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
