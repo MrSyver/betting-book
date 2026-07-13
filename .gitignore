@@ -2,7 +2,7 @@ node_modules/
 package.json
 package-lock.json
 shot-*.png
-shot.mjs
+shot*.mjs
 test-e2e.mjs
 *.log
 .DS_Store

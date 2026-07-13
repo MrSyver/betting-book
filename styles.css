@@ -129,6 +129,7 @@ button.icon.round-plus { background: var(--brand); color: #fff; box-shadow: 0 2p
 }
 .badge.mode-fixed { background: rgba(245,165,36,.15); color: var(--warn); }
 .badge.mode-pool { background: rgba(24,165,88,.15); color: var(--brand); }
+.badge.mode-weighted { background: rgba(88,140,255,.16); color: #7aa2ff; }
 .badge.settled { background: rgba(24,165,88,.15); color: var(--brand); }
 .badge.open { background: rgba(154,164,178,.15); color: var(--muted); }
 
@@ -176,6 +177,20 @@ textarea { resize: vertical; min-height: 72px; }
 .segment button.active { background: var(--brand); color: #fff; }
 
 .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* Mode option cards (editor) */
+#mode-cards { display: flex; flex-direction: column; gap: 8px; }
+.mode-card {
+  display: flex; align-items: flex-start; gap: 10px; text-align: left;
+  width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px; min-height: 0;
+}
+.mode-card.active { border-color: var(--brand); background: rgba(24,165,88,.08); }
+.mode-card .mc-check { color: var(--muted); font-size: 16px; line-height: 1.4; }
+.mode-card.active .mc-check { color: var(--brand); }
+.mode-card .mc-body { display: flex; flex-direction: column; gap: 3px; }
+.mode-card .mc-title { font-weight: 600; font-size: 15px; color: var(--text); }
+.mode-card .mc-desc { font-size: 12px; color: var(--muted); line-height: 1.35; }
 
 /* ---------- Outcome rows (editor) ---------- */
 .outcome-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }

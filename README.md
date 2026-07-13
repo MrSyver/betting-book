@@ -14,8 +14,9 @@ Eine einfache App, um private Wetten unter Freunden zu verwalten – mit Quoten,
 
 - **Neue Wette** über **+**: Titel, Beschreibung und **beliebig viele Ausgänge** mit **frei wählbarem Text** (z. B. Namen oder „Unentschieden“).
 - **Gewinnmodell pro Wette umschaltbar:**
-  - **Feste Quote:** Jeder Einsatz friert die Quote zum Zeitpunkt des Wettens ein. Gewinn = Einsatz × eingefrorene Quote. Die Quote wird transparent als Bruch angezeigt (`Pool ÷ Einsatz auf den Ausgang`).
-  - **Pool-Aufteilung (parimutuel):** Der gesamte Pool wird am Ende proportional zum Einsatz unter den Gewinnern aufgeteilt.
+  - **Pool-Aufteilung (parimutuel):** Der gesamte Pool wird am Ende proportional zum Einsatz unter den Gewinnern aufgeteilt. Die eingefrorenen Quoten spielen für die Auszahlung keine Rolle (jeder Gewinner erhält dieselbe End-Quote).
+  - **Feste Quote:** Jeder Einsatz friert die Quote zum Zeitpunkt des Wettens ein. Gewinn = Einsatz × eingefrorene Quote. Die Quote wird transparent als Bruch angezeigt (`Pool ÷ Einsatz auf den Ausgang`). Die Summe der Auszahlungen kann vom Pool abweichen – der Rest bleibt beim Haus (bzw. muss zugeschossen werden).
+  - **Quoten-Pool (voll ausgeschüttet):** Kombiniert beides – die eingefrorenen Quoten werden als Gewichtung berücksichtigt, aber auf den Pool normiert, sodass **exakt der ganze Pool** ausgezahlt wird. Auszahlung = `Pool × (Einsatz × Quote) ÷ Σ(Einsatz × Quote über alle Gewinner)`.
 - **Einsätze** hinzufügen (Person + Betrag + Ausgang). Die **Quote zum Zeitpunkt der Wette** wird gespeichert.
 - **Ergebnis eintragen:** Gewinner-Ausgang wählen → **Gewinn wird automatisch berechnet**. Danach:
   - **Provision des Hauses (%)** einbehalten (bei 0 % wird alles ausgeschüttet),

@@ -85,6 +85,13 @@
     return Math.round(x);
   }
 
+  function modeName(m) { return m === 'fixed' ? 'Feste Quote' : m === 'weighted' ? 'Quoten-Pool' : 'Pool-Aufteilung'; }
+  function modeBadgeHtml(m) {
+    var cls = m === 'fixed' ? 'mode-fixed' : m === 'weighted' ? 'mode-weighted' : 'mode-pool';
+    var lbl = m === 'fixed' ? 'Feste Quote' : m === 'weighted' ? 'Quoten-Pool' : 'Pool';
+    return '<span class="badge ' + cls + '">' + lbl + '</span>';
+  }
+
   // Compute payouts for a given result object (used for both saved result and live preview)
   function computeWith(bet, result) {
     if (!result || !result.winningOutcomeId) return null;
@@ -92,11 +99,19 @@
     var winStake = stakeOnOutcome(bet, result.winningOutcomeId);
     var c = Math.max(0, Math.min(100, Number(result.commissionPct) || 0));
     var rounding = result.rounding || 'nearest';
+    // sum of (stake × frozen odds) over winners — used for the odds-weighted pool mode
+    var totalClaim = 0;
+    if (bet.mode === 'weighted') {
+      bet.wagers.forEach(function (w) {
+        if (w.outcomeId === result.winningOutcomeId) totalClaim += w.amount * (w.oddsAtTime || 0);
+      });
+    }
     var rows = bet.wagers.map(function (w) {
       var isWinner = w.outcomeId === result.winningOutcomeId;
       var gross = 0;
       if (isWinner) {
         if (bet.mode === 'fixed') gross = w.amount * (w.oddsAtTime || 0);
+        else if (bet.mode === 'weighted') gross = totalClaim > 0 ? pool * (w.amount * (w.oddsAtTime || 0)) / totalClaim : 0;
         else gross = winStake > 0 ? pool * (w.amount / winStake) : 0;
       }
       var afterCommission = gross * (1 - c / 100);
@@ -149,9 +164,7 @@
       bets.forEach(function (bet) {
         var pool = totalPool(bet);
         var isSettled = !!bet.result;
-        var modeBadge = bet.mode === 'fixed'
-          ? '<span class="badge mode-fixed">Feste Quote</span>'
-          : '<span class="badge mode-pool">Pool</span>';
+        var modeBadge = modeBadgeHtml(bet.mode);
         var statusBadge = isSettled
           ? '<span class="badge settled">Abgerechnet</span>'
           : '<span class="badge open">Offen</span>';
@@ -213,11 +226,16 @@
     html += '<textarea id="f-desc" placeholder="Details zur Wette …">' + esc(draft.description) + '</textarea>';
 
     html += '<label>Gewinnmodell</label>';
-    html += '<div class="segment" id="seg-mode">'
-      + '<button type="button" data-mode="fixed" class="' + (draft.mode === 'fixed' ? 'active' : '') + '">Feste Quote</button>'
-      + '<button type="button" data-mode="pool" class="' + (draft.mode === 'pool' ? 'active' : '') + '">Pool-Aufteilung</button>'
-      + '</div>';
-    html += '<p class="hint" id="mode-hint">' + modeHint(draft.mode) + '</p>';
+    html += '<div id="mode-cards">';
+    [['pool', 'Pool-Aufteilung'], ['fixed', 'Feste Quote'], ['weighted', 'Quoten-Pool (voll ausgeschüttet)']].forEach(function (m) {
+      var active = draft.mode === m[0];
+      html += '<button type="button" class="mode-card' + (active ? ' active' : '') + '" data-mode="' + m[0] + '">'
+        + '<span class="mc-check">' + (active ? '●' : '○') + '</span>'
+        + '<span class="mc-body"><span class="mc-title">' + m[1] + '</span>'
+        + '<span class="mc-desc">' + modeHint(m[0]) + '</span></span>'
+        + '</button>';
+    });
+    html += '</div>';
 
     html += '<label>Mögliche Ausgänge</label>';
     draft.outcomes.forEach(function (o, i) {
@@ -238,8 +256,9 @@
   }
 
   function modeHint(mode) {
-    if (mode === 'fixed') return 'Feste Quote: Jeder Einsatz friert die Quote zum Zeitpunkt des Wettens ein. Gewinn = Einsatz × eingefrorene Quote.';
-    return 'Pool-Aufteilung: Der gesamte Pool wird am Ende proportional zum Einsatz unter den Gewinnern aufgeteilt (parimutuel).';
+    if (mode === 'fixed') return 'Quote wird beim Einsatz eingefroren. Gewinn = Einsatz × Quote. Die Summe kann vom Pool abweichen (Rest bleibt beim Haus).';
+    if (mode === 'weighted') return 'Wie „Feste Quote“, aber auf den Pool normiert: Auszahlung = Pool × (Einsatz × Quote) ÷ Σ. Quoten zählen, es wird immer alles ausgeschüttet.';
+    return 'Ganzer Pool wird proportional zum Einsatz unter den Gewinnern aufgeteilt (parimutuel). Eingefrorene Quoten zählen für die Auszahlung nicht.';
   }
 
   function syncEditorFromDOM() {
@@ -260,7 +279,7 @@
 
     var html = '';
     html += topbar(bet.title || 'Ohne Titel',
-      (bet.mode === 'fixed' ? 'Feste Quote' : 'Pool') + ' · Pool ' + fmt(pool),
+      modeName(bet.mode) + ' · Pool ' + fmt(pool),
       { back: 'back-list', rightHtml: '<button class="icon ghost" data-act="edit-bet" aria-label="Bearbeiten">✎</button>' });
     html += '<div class="content">';
 
@@ -654,10 +673,10 @@
     }
   });
 
-  // mode switch (editor) via delegation on change of segment
+  // mode switch (editor) via delegation on the mode option cards
   document.addEventListener('click', function (e) {
-    var mb = e.target.closest('#seg-mode button[data-mode]');
-    if (mb) {
+    var mb = e.target.closest('.mode-card[data-mode]');
+    if (mb && draft) {
       syncEditorFromDOM();
       draft.mode = mb.getAttribute('data-mode');
       renderEditor();
