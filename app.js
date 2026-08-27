@@ -101,7 +101,7 @@
     var winStake = stakeOnOutcome(bet, result.winningOutcomeId);
     var c = Math.max(0, Math.min(100, Number(result.commissionPct) || 0));
     var rounding = result.rounding || 'nearest';
-    var base = bet.commissionBase === 'profit' ? 'profit' : 'payout';
+    var base = (result.commissionBase || bet.commissionBase) === 'profit' ? 'profit' : 'payout';
     // sum of (stake × frozen odds) over winners — used for the odds-weighted pool mode
     var totalClaim = 0;
     if (bet.mode === 'weighted') {
@@ -246,14 +246,6 @@
     });
     html += '</div>';
 
-    var base = draft.commissionBase === 'profit' ? 'profit' : 'payout';
-    html += '<label>Provision am Ende abziehen von</label>';
-    html += '<div class="segment" id="seg-commbase">'
-      + '<button type="button" data-commbase="payout" class="' + (base === 'payout' ? 'active' : '') + '">Auszahlung</button>'
-      + '<button type="button" data-commbase="profit" class="' + (base === 'profit' ? 'active' : '') + '">nur Gewinn</button>'
-      + '</div>';
-    html += '<p class="hint">' + commBaseHint(base) + '</p>';
-
     html += '<label>Mögliche Ausgänge</label>';
     draft.outcomes.forEach(function (o, i) {
       html += '<div class="outcome-row">'
@@ -378,29 +370,29 @@
     if (bet.mode === 'pool' && s.effectiveOdds != null) html += '<span>End-Quote: <b>' + fmtOdds(s.effectiveOdds) + '</b></span>';
     html += '</div>';
 
+    var paid = (bet.result && bet.result.paid) || {};
+    var winners = s.rows.filter(function (r) { return r.isWinner; });
+    var paidCount = winners.filter(function (r) { return paid[r.w.id]; }).length;
+
     html += '<div class="settle-summary">';
     html += '<div class="k">Pool gesamt</div><div class="v">' + fmt(s.pool) + '</div>';
-    html += '<div class="k">Bruttogewinne</div><div class="v">' + fmt(s.sumGross) + '</div>';
     html += '<div class="k">Provision (' + fmtOdds(s.c) + ' % auf ' + (s.base === 'profit' ? 'Gewinn' : 'Auszahlung') + ')</div><div class="v house">− ' + fmt(s.provision) + '</div>';
-    html += '<div class="k">Auszahlung gesamt (gerundet)</div><div class="v">' + fmt0(s.sumRounded) + '</div>';
-    html += '<div class="k">Rest beim Haus</div><div class="v house">' + fmt(s.houseRest) + '</div>';
+    html += '<div class="k">Auszahlung gesamt</div><div class="v">' + fmt0(s.sumRounded) + '</div>';
+    html += '<div class="k"><b>Anteil Haus</b></div><div class="v house"><b>' + fmt(s.houseRest) + '</b></div>';
     html += '</div>';
 
-    var winners = s.rows.filter(function (r) { return r.isWinner; });
     if (winners.length) {
-      html += '<div class="table-scroll"><table class="payout-table">';
-      html += '<tr><th>Person</th><th>Einsatz</th><th>Exakt</th><th>n. Prov.</th><th>Auszahlung</th></tr>';
+      html += '<h3 style="margin-bottom:4px">Auszahlungen (' + paidCount + '/' + winners.length + ' erledigt)</h3>';
       winners.forEach(function (r) {
-        html += '<tr>'
-          + '<td>' + esc(r.w.person || '—') + '</td>'
-          + '<td>' + fmt(r.w.amount) + '</td>'
-          + '<td>' + fmt(r.gross) + '</td>'
-          + '<td>' + fmt(r.afterCommission) + '</td>'
-          + '<td class="final">' + fmt0(r.rounded) + '</td>'
-          + '</tr>';
+        var done = !!paid[r.w.id];
+        html += '<div class="payout-row' + (done ? ' paid' : '') + '">'
+          + '<button class="paid-toggle" data-act="toggle-paid" data-id="' + r.w.id + '" aria-label="Als ausgezahlt markieren">' + (done ? '✓' : '') + '</button>'
+          + '<div class="grow"><div class="pr-name">' + esc(r.w.person || '—') + '</div>'
+          + '<div class="pr-sub">' + (done ? '<span class="pr-done">ausgezahlt</span>' : 'Einsatz ' + fmt(r.w.amount) + ' · exakt ' + fmt(r.afterCommission)) + '</div></div>'
+          + '<div class="pr-amount">' + fmt0(r.rounded) + '</div>'
+          + '</div>';
       });
-      html += '</table></div>';
-      html += '<p class="hint">„Exakt“ = Gewinn vor Provision · „n. Prov.“ = nach Abzug der Provision (vor Rundung) · „Auszahlung“ = auf glatten Euro gerundet.</p>';
+      html += '<p class="hint">Tippe den Kreis links an, sobald die Person ihr Geld bekommen hat.</p>';
     } else {
       html += '<p class="hint">Niemand hat auf den Gewinner-Ausgang gesetzt – keine Auszahlung.</p>';
     }
@@ -491,7 +483,8 @@
 
   // ---- result sheet
   function sheetResult(bet) {
-    var cur = bet.result || { winningOutcomeId: bet.outcomes[0].id, commissionPct: 0, rounding: 'nearest' };
+    var cur = bet.result || { winningOutcomeId: bet.outcomes[0].id, commissionPct: 0, rounding: 'nearest', commissionBase: 'payout' };
+    var curBase = cur.commissionBase === 'profit' ? 'profit' : 'payout';
     var opts = bet.outcomes.map(function (o) {
       return '<option value="' + o.id + '"' + (o.id === cur.winningOutcomeId ? ' selected' : '') + '>' + esc(o.label) + '</option>';
     }).join('');
@@ -501,6 +494,12 @@
       + '<select id="r-winner">' + opts + '</select>'
       + '<label for="r-commission">Provision des Hauses (%)</label>'
       + '<input id="r-commission" type="text" inputmode="decimal" value="' + esc(cur.commissionPct || 0) + '" />'
+      + '<label>Provision abziehen von</label>'
+      + '<div class="segment" id="seg-commbase">'
+      + '<button type="button" data-commbase="payout" class="' + (curBase === 'payout' ? 'active' : '') + '">Auszahlung</button>'
+      + '<button type="button" data-commbase="profit" class="' + (curBase === 'profit' ? 'active' : '') + '">nur Gewinn</button>'
+      + '</div>'
+      + '<p class="hint" id="commbase-hint">' + commBaseHint(curBase) + '</p>'
       + '<label>Rundung der Auszahlung</label>'
       + '<div class="segment" id="seg-round">'
       + '<button type="button" data-round="down" class="' + (cur.rounding === 'down' ? 'active' : '') + '">Abrunden</button>'
@@ -514,7 +513,7 @@
       + '</div>';
     var back = openSheet(html);
 
-    var pending = { winningOutcomeId: cur.winningOutcomeId, commissionPct: Number(cur.commissionPct) || 0, rounding: cur.rounding || 'nearest' };
+    var pending = { winningOutcomeId: cur.winningOutcomeId, commissionPct: Number(cur.commissionPct) || 0, rounding: cur.rounding || 'nearest', commissionBase: curBase };
     var winnerEl = back.querySelector('#r-winner');
     var commEl = back.querySelector('#r-commission');
     var previewEl = back.querySelector('#r-preview');
@@ -532,6 +531,14 @@
       pending.rounding = b.getAttribute('data-round');
       back.querySelectorAll('#seg-round button').forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
+      refresh();
+    });
+    back.querySelector('#seg-commbase').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-commbase]'); if (!b) return;
+      pending.commissionBase = b.getAttribute('data-commbase');
+      back.querySelectorAll('#seg-commbase button').forEach(function (x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      var hint = back.querySelector('#commbase-hint'); if (hint) hint.textContent = commBaseHint(pending.commissionBase);
       refresh();
     });
     // keep pending in dataset for save
@@ -569,6 +576,8 @@
       winningOutcomeId: p.winningOutcomeId,
       commissionPct: Math.max(0, Math.min(100, Number(p.commissionPct) || 0)),
       rounding: p.rounding || 'nearest',
+      commissionBase: p.commissionBase === 'profit' ? 'profit' : 'payout',
+      paid: (bet.result && bet.result.paid) || {},   // keep existing check-offs
       settledAt: Date.now()
     };
     save(); closeSheet(); render();
@@ -578,7 +587,7 @@
   // ================================================================ ACTIONS
   function startNewBet() {
     draft = {
-      id: null, title: '', description: '', mode: 'pool', commissionBase: 'payout',
+      id: null, title: '', description: '', mode: 'pool',
       outcomes: [{ id: uid('o'), label: '' }, { id: uid('o'), label: '' }]
     };
     route = { name: 'editor' };
@@ -588,7 +597,6 @@
   function startEditBet(bet) {
     draft = {
       id: bet.id, title: bet.title, description: bet.description, mode: bet.mode,
-      commissionBase: bet.commissionBase === 'profit' ? 'profit' : 'payout',
       outcomes: bet.outcomes.map(function (o) { return { id: o.id, label: o.label }; })
     };
     route = { name: 'editor' };
@@ -611,7 +619,7 @@
       var hasWagers = removed.some(function (o) { return stakeOnOutcome(bet, o.id) > 0; });
       if (hasWagers) { toast('Ein Ausgang mit Einsätzen kann nicht entfernt werden.'); return; }
       bet.title = title; bet.description = (draft.description || '').trim();
-      bet.mode = draft.mode; bet.commissionBase = draft.commissionBase === 'profit' ? 'profit' : 'payout';
+      bet.mode = draft.mode;
       bet.outcomes = outcomes;
       // if winning outcome was removed, clear result
       if (bet.result && !outcomes.some(function (o) { return o.id === bet.result.winningOutcomeId; })) bet.result = null;
@@ -619,8 +627,7 @@
     } else {
       var newBet = {
         id: uid('b'), title: title, description: (draft.description || '').trim(),
-        mode: draft.mode, commissionBase: draft.commissionBase === 'profit' ? 'profit' : 'payout',
-        outcomes: outcomes, wagers: [], result: null, createdAt: Date.now()
+        mode: draft.mode, outcomes: outcomes, wagers: [], result: null, createdAt: Date.now()
       };
       state.bets.push(newBet);
       save(); route = { name: 'detail', betId: newBet.id }; render();
@@ -631,6 +638,13 @@
     if (!confirm('Diese Wette wirklich löschen?')) return;
     state.bets = state.bets.filter(function (b) { return b.id !== bet.id; });
     save(); route = { name: 'list' }; render();
+  }
+
+  function togglePaid(bet, wid) {
+    if (!bet || !bet.result) return;
+    if (!bet.result.paid) bet.result.paid = {};
+    if (bet.result.paid[wid]) delete bet.result.paid[wid]; else bet.result.paid[wid] = true;
+    save(); render();
   }
 
   function deleteWager(bet, wid) {
@@ -786,6 +800,7 @@
       case 'del-wager': deleteWager(getBet(route.betId), t.getAttribute('data-id')); break;
       case 'enter-result': sheetResult(getBet(route.betId)); break;
       case 'save-result': saveResult(getBet(route.betId)); break;
+      case 'toggle-paid': togglePaid(getBet(route.betId), t.getAttribute('data-id')); break;
       case 'close-sheet': closeSheet(); break;
     }
   });
@@ -796,13 +811,6 @@
     if (mb && draft) {
       syncEditorFromDOM();
       draft.mode = mb.getAttribute('data-mode');
-      renderEditor();
-      return;
-    }
-    var cb = e.target.closest('#seg-commbase button[data-commbase]');
-    if (cb && draft) {
-      syncEditorFromDOM();
-      draft.commissionBase = cb.getAttribute('data-commbase');
       renderEditor();
     }
   });

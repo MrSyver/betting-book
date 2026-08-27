@@ -250,6 +250,23 @@ textarea { resize: vertical; min-height: 72px; }
 .payout-table tr.lose td { color: var(--muted); }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
+/* Payout list with check-off */
+.payout-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.payout-row:last-of-type { border-bottom: none; }
+.paid-toggle {
+  flex: 0 0 auto; width: 34px; height: 34px; min-height: 34px; padding: 0;
+  border-radius: 50%; border: 2px solid var(--border); background: transparent;
+  color: #fff; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.payout-row.paid .paid-toggle { background: var(--win); border-color: var(--win); }
+.payout-row .grow { min-width: 0; }
+.pr-name { font-weight: 600; }
+.pr-sub { font-size: 12px; color: var(--muted); }
+.pr-done { color: var(--win); font-weight: 600; }
+.pr-amount { font-weight: 700; font-size: 18px; white-space: nowrap; }
+.payout-row.paid .pr-name { color: var(--muted); }
+.payout-row.paid .pr-amount { color: var(--muted); }
+
 /* ---------- Empty state ---------- */
 .empty { text-align: center; color: var(--muted); padding: 48px 20px; }
 .empty .big { font-size: 48px; margin-bottom: 8px; }
