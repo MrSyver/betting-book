@@ -430,6 +430,9 @@
       + '<label for="w-person">Person</label>'
       + '<input id="w-person" type="text" placeholder="Name" autocomplete="off" />'
       + '<label for="w-amount">Betrag (€)</label>'
+      + '<div class="amt-chips">'
+      + [5, 10, 15, 20].map(function (v) { return '<button type="button" class="amt-chip" data-amount="' + v + '">' + v + ' €</button>'; }).join('')
+      + '</div>'
       + '<input id="w-amount" type="text" inputmode="decimal" placeholder="z. B. 10" />'
       + '<label for="w-outcome">Wettet auf</label>'
       + '<select id="w-outcome">' + opts + '</select>'
@@ -453,8 +456,19 @@
       var odds = stakeAt > 0 ? poolAt / stakeAt : null;
       preview.textContent = 'Eingefrorene Quote: ' + fmtOdds(odds) + '  (' + fmt(poolAt) + ' Pool ÷ ' + fmt(stakeAt) + ' auf „' + outcomeLabel(bet, oid) + '“)';
     }
-    amountEl.addEventListener('input', updatePreview);
+    amountEl.addEventListener('input', function () {
+      back.querySelectorAll('.amt-chip').forEach(function (c) { c.classList.remove('active'); });
+      updatePreview();
+    });
     outcomeEl.addEventListener('change', updatePreview);
+    back.querySelectorAll('.amt-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        amountEl.value = chip.getAttribute('data-amount');
+        updatePreview();
+        back.querySelectorAll('.amt-chip').forEach(function (c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+      });
+    });
     updatePreview();
     back.querySelector('#w-person').focus();
   }
