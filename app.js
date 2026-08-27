@@ -16,7 +16,7 @@
   var draft = null;       // editor working copy
   var openMenuFlag = false;
 
-  function blankState() { return { version: 1, bets: [] }; }
+  function blankState() { return { version: 1, bets: [], paypalHandle: '' }; }
 
   function load() {
     try {
@@ -24,6 +24,7 @@
       if (!raw) return blankState();
       var data = JSON.parse(raw);
       if (!data || !Array.isArray(data.bets)) return blankState();
+      if (typeof data.paypalHandle !== 'string') data.paypalHandle = '';
       return data;
     } catch (e) {
       console.warn('load failed', e);
@@ -99,6 +100,7 @@
     var winStake = stakeOnOutcome(bet, result.winningOutcomeId);
     var c = Math.max(0, Math.min(100, Number(result.commissionPct) || 0));
     var rounding = result.rounding || 'nearest';
+    var base = bet.commissionBase === 'profit' ? 'profit' : 'payout';
     // sum of (stake × frozen odds) over winners — used for the odds-weighted pool mode
     var totalClaim = 0;
     if (bet.mode === 'weighted') {
@@ -108,20 +110,25 @@
     }
     var rows = bet.wagers.map(function (w) {
       var isWinner = w.outcomeId === result.winningOutcomeId;
-      var gross = 0;
+      var gross = 0, afterCommission = 0;
       if (isWinner) {
         if (bet.mode === 'fixed') gross = w.amount * (w.oddsAtTime || 0);
         else if (bet.mode === 'weighted') gross = totalClaim > 0 ? pool * (w.amount * (w.oddsAtTime || 0)) / totalClaim : 0;
         else gross = winStake > 0 ? pool * (w.amount / winStake) : 0;
+        if (base === 'profit') {
+          var prof = gross - w.amount; if (prof < 0) prof = 0;
+          afterCommission = w.amount + prof * (1 - c / 100);   // stake untouched, only profit taxed
+        } else {
+          afterCommission = gross * (1 - c / 100);             // commission on the whole payout
+        }
       }
-      var afterCommission = gross * (1 - c / 100);
       var rounded = isWinner ? roundEuro(afterCommission, rounding) : 0;
       return { w: w, isWinner: isWinner, gross: gross, afterCommission: afterCommission, rounded: rounded, profit: rounded - w.amount };
     });
     var sumGross = 0, sumAfter = 0, sumRounded = 0;
     rows.forEach(function (r) { sumGross += r.gross; sumAfter += r.afterCommission; sumRounded += r.rounded; });
     return {
-      pool: pool, winStake: winStake, c: c, rounding: rounding, rows: rows,
+      pool: pool, winStake: winStake, c: c, rounding: rounding, base: base, rows: rows,
       sumGross: sumGross, sumAfter: sumAfter, sumRounded: sumRounded,
       provision: sumGross - sumAfter, houseRest: pool - sumRounded,
       effectiveOdds: winStake > 0 ? pool / winStake : null
@@ -193,6 +200,7 @@
 
   function menuHtml() {
     return '<div class="menu">'
+      + '<button data-act="paypal-setup">💶 PayPal-Empfänger</button>'
       + '<button data-act="export">⬇︎ Backup exportieren</button>'
       + '<button data-act="import">⬆︎ Backup importieren</button>'
       + '</div>';
@@ -237,6 +245,14 @@
     });
     html += '</div>';
 
+    var base = draft.commissionBase === 'profit' ? 'profit' : 'payout';
+    html += '<label>Provision am Ende abziehen von</label>';
+    html += '<div class="segment" id="seg-commbase">'
+      + '<button type="button" data-commbase="payout" class="' + (base === 'payout' ? 'active' : '') + '">Auszahlung</button>'
+      + '<button type="button" data-commbase="profit" class="' + (base === 'profit' ? 'active' : '') + '">nur Gewinn</button>'
+      + '</div>';
+    html += '<p class="hint">' + commBaseHint(base) + '</p>';
+
     html += '<label>Mögliche Ausgänge</label>';
     draft.outcomes.forEach(function (o, i) {
       html += '<div class="outcome-row">'
@@ -259,6 +275,11 @@
     if (mode === 'fixed') return 'Quote wird beim Einsatz eingefroren. Gewinn = Einsatz × Quote. Die Summe kann vom Pool abweichen (Rest bleibt beim Haus).';
     if (mode === 'weighted') return 'Wie „Feste Quote“, aber auf den Pool normiert: Auszahlung = Pool × (Einsatz × Quote) ÷ Σ. Quoten zählen, es wird immer alles ausgeschüttet.';
     return 'Ganzer Pool wird proportional zum Einsatz unter den Gewinnern aufgeteilt (parimutuel). Eingefrorene Quoten zählen für die Auszahlung nicht.';
+  }
+
+  function commBaseHint(base) {
+    if (base === 'profit') return 'Reine Gewinnbeteiligung: Der Einsatz kommt voll zurück, nur der Gewinn wird um die Provision gekürzt.';
+    return 'Provision wird vom gesamten Auszahlungsbetrag (Einsatz + Gewinn) abgezogen.';
   }
 
   function syncEditorFromDOM() {
@@ -359,7 +380,7 @@
     html += '<div class="settle-summary">';
     html += '<div class="k">Pool gesamt</div><div class="v">' + fmt(s.pool) + '</div>';
     html += '<div class="k">Bruttogewinne</div><div class="v">' + fmt(s.sumGross) + '</div>';
-    html += '<div class="k">Provision (' + fmtOdds(s.c) + ' %)</div><div class="v house">− ' + fmt(s.provision) + '</div>';
+    html += '<div class="k">Provision (' + fmtOdds(s.c) + ' % auf ' + (s.base === 'profit' ? 'Gewinn' : 'Auszahlung') + ')</div><div class="v house">− ' + fmt(s.provision) + '</div>';
     html += '<div class="k">Auszahlung gesamt (gerundet)</div><div class="v">' + fmt0(s.sumRounded) + '</div>';
     html += '<div class="k">Rest beim Haus</div><div class="v house">' + fmt(s.houseRest) + '</div>';
     html += '</div>';
@@ -412,6 +433,8 @@
       + '<label for="w-outcome">Wettet auf</label>'
       + '<select id="w-outcome">' + opts + '</select>'
       + '<p class="hint" id="w-preview"></p>'
+      + '<button type="button" class="ghost block" data-act="pp-qr" style="margin-top:10px">💶 PayPal-QR für diesen Betrag</button>'
+      + '<div id="pp-qr"></div>'
       + '<div class="btn-row sheet-actions">'
       + '<button class="ghost" data-act="close-sheet">Abbrechen</button>'
       + '<button class="primary" data-act="save-wager">Hinzufügen</button>'
@@ -540,7 +563,7 @@
   // ================================================================ ACTIONS
   function startNewBet() {
     draft = {
-      id: null, title: '', description: '', mode: 'pool',
+      id: null, title: '', description: '', mode: 'pool', commissionBase: 'payout',
       outcomes: [{ id: uid('o'), label: '' }, { id: uid('o'), label: '' }]
     };
     route = { name: 'editor' };
@@ -550,6 +573,7 @@
   function startEditBet(bet) {
     draft = {
       id: bet.id, title: bet.title, description: bet.description, mode: bet.mode,
+      commissionBase: bet.commissionBase === 'profit' ? 'profit' : 'payout',
       outcomes: bet.outcomes.map(function (o) { return { id: o.id, label: o.label }; })
     };
     route = { name: 'editor' };
@@ -572,14 +596,16 @@
       var hasWagers = removed.some(function (o) { return stakeOnOutcome(bet, o.id) > 0; });
       if (hasWagers) { toast('Ein Ausgang mit Einsätzen kann nicht entfernt werden.'); return; }
       bet.title = title; bet.description = (draft.description || '').trim();
-      bet.mode = draft.mode; bet.outcomes = outcomes;
+      bet.mode = draft.mode; bet.commissionBase = draft.commissionBase === 'profit' ? 'profit' : 'payout';
+      bet.outcomes = outcomes;
       // if winning outcome was removed, clear result
       if (bet.result && !outcomes.some(function (o) { return o.id === bet.result.winningOutcomeId; })) bet.result = null;
       save(); route = { name: 'detail', betId: bet.id }; render();
     } else {
       var newBet = {
         id: uid('b'), title: title, description: (draft.description || '').trim(),
-        mode: draft.mode, outcomes: outcomes, wagers: [], result: null, createdAt: Date.now()
+        mode: draft.mode, commissionBase: draft.commissionBase === 'profit' ? 'profit' : 'payout',
+        outcomes: outcomes, wagers: [], result: null, createdAt: Date.now()
       };
       state.bets.push(newBet);
       save(); route = { name: 'detail', betId: newBet.id }; render();
@@ -618,7 +644,7 @@
         var data = JSON.parse(reader.result);
         if (!data || !Array.isArray(data.bets)) throw new Error('ungültiges Format');
         if (!confirm('Backup importieren? Der aktuelle Stand (' + state.bets.length + ' Wetten) wird ersetzt durch ' + data.bets.length + ' Wetten.')) return;
-        state = { version: 1, bets: data.bets };
+        state = { version: 1, bets: data.bets, paypalHandle: typeof data.paypalHandle === 'string' ? data.paypalHandle : getPaypalHandle() };
         save(); route = { name: 'list' }; render();
         toast('Backup importiert.');
       } catch (e) {
@@ -626,6 +652,67 @@
       }
     };
     reader.readAsText(file);
+  }
+
+  // ---- PayPal (recipient + payment link + QR)
+  function getPaypalHandle() { return (state.paypalHandle || '').trim(); }
+
+  function sanitizePaypal(v) {
+    v = String(v || '').trim();
+    var m = v.match(/paypal\.me\/([^\/\s?]+)/i);
+    if (m) return m[1];
+    return v.replace(/^@/, '').trim();
+  }
+
+  function setupPaypal() {
+    var cur = getPaypalHandle();
+    var v = prompt('PayPal-Empfänger für Zahlungen festlegen:\n• PayPal.Me-Benutzername (z. B. MoritzX) — empfohlen, ermöglicht „Freunde & Familie“\n• oder deine PayPal-E-Mail-Adresse', cur);
+    if (v === null) return;               // cancelled
+    state.paypalHandle = sanitizePaypal(v);
+    save();
+    toast(state.paypalHandle ? 'PayPal-Empfänger gespeichert.' : 'PayPal-Empfänger entfernt.');
+  }
+
+  // Build a payment link that pre-fills the exact amount.
+  function paypalUrl(handle, amount, note) {
+    var amt = (Math.round(amount * 100) / 100).toFixed(2);   // "12.50"
+    if (handle.indexOf('@') >= 0) {
+      // E-Mail → klassischer PayPal-Bezahllink mit vorausgefülltem Betrag
+      return 'https://www.paypal.com/cgi-bin/webscr?cmd=_xclick'
+        + '&business=' + encodeURIComponent(handle)
+        + '&currency_code=EUR&amount=' + encodeURIComponent(amt)
+        + (note ? '&item_name=' + encodeURIComponent(note) : '');
+    }
+    return 'https://www.paypal.me/' + encodeURIComponent(handle.replace(/^@/, '')) + '/' + amt + 'EUR';
+  }
+
+  function showPaypalQr(bet) {
+    var amtEl = document.getElementById('w-amount');
+    var container = document.getElementById('pp-qr');
+    if (!amtEl || !container) return;
+    var amt = parseAmount(amtEl.value);
+    if (!(amt > 0)) { toast('Erst einen Betrag eingeben.'); return; }
+    var handle = getPaypalHandle();
+    if (!handle) { setupPaypal(); handle = getPaypalHandle(); if (!handle) return; }
+    var person = (document.getElementById('w-person').value || '').trim();
+    var note = (bet.title || 'Wette') + (person ? ' – ' + person : '');
+    var url = paypalUrl(handle, amt, note);
+    var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=' + encodeURIComponent(url);
+    container.innerHTML = '<div class="qr-box">'
+      + '<img class="qr-img" src="' + esc(qrSrc) + '" alt="PayPal-QR-Code" />'
+      + '<div class="qr-info">' + fmt(amt) + ' an <b>' + esc(handle) + '</b></div>'
+      + '<a class="pp-open" href="' + esc(url) + '" target="_blank" rel="noopener">In PayPal öffnen</a>'
+      + '<div class="hint">Mit der Kamera/PayPal-App scannen, um genau ' + fmt(amt) + ' zu senden. '
+      + '<button type="button" class="link" data-act="paypal-setup">Empfänger ändern</button></div>'
+      + '</div>';
+    // graceful fallback if the QR image can't load (e.g. offline)
+    var img = container.querySelector('.qr-img');
+    if (img) img.onerror = function () {
+      this.style.display = 'none';
+      var info = container.querySelector('.qr-info');
+      if (info) info.insertAdjacentHTML('beforebegin',
+        '<div class="hint">QR-Bild konnte nicht geladen werden (offline?). Nutze „In PayPal öffnen“.</div>');
+    };
   }
 
   // ================================================================ EVENTS
@@ -648,6 +735,8 @@
         render(); break;
 
       case 'toggle-menu': openMenuFlag = !openMenuFlag; renderList(); break;
+      case 'paypal-setup': openMenuFlag = false; setupPaypal(); if (route.name === 'list') renderList(); break;
+      case 'pp-qr': showPaypalQr(getBet(route.betId)); break;
       case 'export': openMenuFlag = false; exportBackup(); break;
       case 'import':
         openMenuFlag = false;
@@ -679,6 +768,13 @@
     if (mb && draft) {
       syncEditorFromDOM();
       draft.mode = mb.getAttribute('data-mode');
+      renderEditor();
+      return;
+    }
+    var cb = e.target.closest('#seg-commbase button[data-commbase]');
+    if (cb && draft) {
+      syncEditorFromDOM();
+      draft.commissionBase = cb.getAttribute('data-commbase');
       renderEditor();
     }
   });

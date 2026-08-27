@@ -17,7 +17,11 @@ Eine einfache App, um private Wetten unter Freunden zu verwalten – mit Quoten,
   - **Pool-Aufteilung (parimutuel):** Der gesamte Pool wird am Ende proportional zum Einsatz unter den Gewinnern aufgeteilt. Die eingefrorenen Quoten spielen für die Auszahlung keine Rolle (jeder Gewinner erhält dieselbe End-Quote).
   - **Feste Quote:** Jeder Einsatz friert die Quote zum Zeitpunkt des Wettens ein. Gewinn = Einsatz × eingefrorene Quote. Die Quote wird transparent als Bruch angezeigt (`Pool ÷ Einsatz auf den Ausgang`). Die Summe der Auszahlungen kann vom Pool abweichen – der Rest bleibt beim Haus (bzw. muss zugeschossen werden).
   - **Quoten-Pool (voll ausgeschüttet):** Kombiniert beides – die eingefrorenen Quoten werden als Gewichtung berücksichtigt, aber auf den Pool normiert, sodass **exakt der ganze Pool** ausgezahlt wird. Auszahlung = `Pool × (Einsatz × Quote) ÷ Σ(Einsatz × Quote über alle Gewinner)`.
+- **Provision – Bezugsgröße pro Wette wählbar** (beim Anlegen):
+  - **Auszahlung:** Die Provision wird vom gesamten Auszahlungsbetrag (Einsatz + Gewinn) abgezogen.
+  - **nur Gewinn:** Reine Gewinnbeteiligung – der Einsatz kommt voll zurück, nur der Gewinn wird gekürzt.
 - **Einsätze** hinzufügen (Person + Betrag + Ausgang). Die **Quote zum Zeitpunkt der Wette** wird gespeichert.
+- **PayPal-QR pro Einsatz:** Beim Hinzufügen eines Einsatzes erzeugt ein Button einen **QR-Code / PayPal-Link mit exakt diesem Betrag**, den der Wettende scannen kann. Den Empfänger legst du einmal im **⋯-Menü → PayPal-Empfänger** fest: entweder deinen **PayPal.Me-Benutzernamen** (empfohlen) oder deine **PayPal-E-Mail** (dann wird der klassische PayPal-Bezahllink mit vorausgefülltem Betrag genutzt).
 - **Ergebnis eintragen:** Gewinner-Ausgang wählen → **Gewinn wird automatisch berechnet**. Danach:
   - **Provision des Hauses (%)** einbehalten (bei 0 % wird alles ausgeschüttet),
   - Auszahlung auf **glatte Euro runden** (abrunden / kaufmännisch / aufrunden).
