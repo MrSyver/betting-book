@@ -202,8 +202,8 @@
   function menuHtml() {
     return '<div class="menu">'
       + '<button data-act="paypal-setup">💶 PayPal-Empfänger</button>'
-      + '<button data-act="export">⬇︎ Backup exportieren</button>'
-      + '<button data-act="import">⬆︎ Backup importieren</button>'
+      + '<button data-act="export">💾 Wetten sichern (Export)</button>'
+      + '<button data-act="import">📂 Backup laden (Import)</button>'
       + '</div>';
   }
 
@@ -628,11 +628,25 @@
   // ---- export / import
   function exportBackup() {
     var data = JSON.stringify(state, null, 2);
+    var stamp = new Date().toISOString().slice(0, 10);
+    var filename = 'wettbuch-backup-' + stamp + '.json';
+    // On iOS/Android, the native share sheet lets the user save to Files/iCloud or send it.
+    var file = null;
+    try { file = new File([data], filename, { type: 'application/json' }); } catch (e) { /* older browsers */ }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+      navigator.share({ files: [file], title: 'Wettbuch-Backup' })
+        .then(function () { toast('Backup geteilt.'); })
+        .catch(function (err) { if (err && err.name !== 'AbortError') downloadJson(data, filename); });
+      return;
+    }
+    downloadJson(data, filename);
+  }
+
+  function downloadJson(data, filename) {
     var blob = new Blob([data], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    var stamp = new Date().toISOString().slice(0, 10);
-    a.href = url; a.download = 'wettbuch-backup-' + stamp + '.json';
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     toast('Backup exportiert.');
