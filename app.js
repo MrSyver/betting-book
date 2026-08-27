@@ -718,7 +718,8 @@
 
   // Build a payment link that pre-fills the exact amount.
   function paypalUrl(handle, amount, note) {
-    var amt = (Math.round(amount * 100) / 100).toFixed(2);   // "12.50"
+    var n = Math.round(amount * 100) / 100;
+    var amt = n.toFixed(2);                                   // "12.50" / "15.00"
     if (handle.indexOf('@') >= 0) {
       // E-Mail → klassischer PayPal-Bezahllink mit vorausgefülltem Betrag
       return 'https://www.paypal.com/cgi-bin/webscr?cmd=_xclick'
@@ -726,7 +727,9 @@
         + '&currency_code=EUR&amount=' + encodeURIComponent(amt)
         + (note ? '&item_name=' + encodeURIComponent(note) : '');
     }
-    return 'https://www.paypal.me/' + encodeURIComponent(handle.replace(/^@/, '')) + '/' + amt + 'EUR';
+    // PayPal.Me: canonical host WITHOUT "www", amount as documented (whole numbers without decimals).
+    var amtStr = Number.isInteger(n) ? String(n) : amt;       // 15 → "15", 12.5 → "12.50"
+    return 'https://paypal.me/' + encodeURIComponent(handle.replace(/^@/, '')) + '/' + amtStr + 'EUR';
   }
 
   function showPaypalQr(bet) {
