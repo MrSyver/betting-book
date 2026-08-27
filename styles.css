@@ -307,10 +307,8 @@ textarea { resize: vertical; min-height: 72px; }
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 12px; padding: 16px 14px;
 }
-.qr-img {
-  width: 230px; max-width: 78%; height: auto;
-  background: #fff; padding: 8px; border-radius: 10px;
-}
+.qr-svg { display: inline-block; background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
+.qr-svg svg { display: block; width: 240px; max-width: 70vw; height: auto; }
 .qr-info { margin-top: 12px; font-size: 15px; }
 .pp-open {
   display: inline-block; margin-top: 12px;

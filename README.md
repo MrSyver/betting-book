@@ -21,7 +21,7 @@ Eine einfache App, um private Wetten unter Freunden zu verwalten – mit Quoten,
   - **Auszahlung:** Die Provision wird vom gesamten Auszahlungsbetrag (Einsatz + Gewinn) abgezogen.
   - **nur Gewinn:** Reine Gewinnbeteiligung – der Einsatz kommt voll zurück, nur der Gewinn wird gekürzt.
 - **Einsätze** hinzufügen (Person + Betrag + Ausgang). Die **Quote zum Zeitpunkt der Wette** wird gespeichert.
-- **PayPal-QR pro Einsatz:** Beim Hinzufügen eines Einsatzes erzeugt ein Button einen **QR-Code / PayPal-Link mit exakt diesem Betrag**, den der Wettende scannen kann. Den Empfänger legst du einmal im **⋯-Menü → PayPal-Empfänger** fest: entweder deinen **PayPal.Me-Benutzernamen** (empfohlen) oder deine **PayPal-E-Mail** (dann wird der klassische PayPal-Bezahllink mit vorausgefülltem Betrag genutzt).
+- **PayPal-QR pro Einsatz:** Beim Hinzufügen eines Einsatzes erzeugt ein Button einen **QR-Code mit exakt diesem Betrag**, den der Wettende direkt scannt, um sofort zu bezahlen. Der QR-Code wird **lokal auf dem Gerät** erzeugt (funktioniert offline, kein externer Dienst). Empfänger ist standardmäßig der PayPal.Me-Name **Moritz975**; im **⋯-Menü → PayPal-Empfänger** änderbar – entweder ein anderer **PayPal.Me-Benutzername** oder eine **PayPal-E-Mail** (dann klassischer PayPal-Bezahllink mit vorausgefülltem Betrag).
 - **Ergebnis eintragen:** Gewinner-Ausgang wählen → **Gewinn wird automatisch berechnet**. Danach:
   - **Provision des Hauses (%)** einbehalten (bei 0 % wird alles ausgeschüttet),
   - Auszahlung auf **glatte Euro runden** (abrunden / kaufmännisch / aufrunden).

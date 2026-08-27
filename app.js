@@ -8,6 +8,7 @@
   'use strict';
 
   var STORAGE_KEY = 'wettbuch.v1';
+  var DEFAULT_PAYPAL = 'Moritz975';   // PayPal.Me default recipient (editable in the ⋯ menu)
   var $app = document.getElementById('app');
 
   // ---------------------------------------------------------------- state
@@ -16,7 +17,7 @@
   var draft = null;       // editor working copy
   var openMenuFlag = false;
 
-  function blankState() { return { version: 1, bets: [], paypalHandle: '' }; }
+  function blankState() { return { version: 1, bets: [], paypalHandle: DEFAULT_PAYPAL }; }
 
   function load() {
     try {
@@ -697,22 +698,21 @@
     var person = (document.getElementById('w-person').value || '').trim();
     var note = (bet.title || 'Wette') + (person ? ' – ' + person : '');
     var url = paypalUrl(handle, amt, note);
-    var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=' + encodeURIComponent(url);
+    var svg = '';
+    try {
+      var qr = qrcode(0, 'M');          // type 0 = auto-size, error correction level M
+      qr.addData(url);
+      qr.make();
+      svg = qr.createSvgTag({ cellSize: 8, margin: 32, scalable: true });
+    } catch (e) { svg = ''; console.error('QR failed', e); }
     container.innerHTML = '<div class="qr-box">'
-      + '<img class="qr-img" src="' + esc(qrSrc) + '" alt="PayPal-QR-Code" />'
+      + (svg ? '<div class="qr-svg">' + svg + '</div>'
+             : '<div class="hint">QR konnte nicht erzeugt werden. Nutze „In PayPal öffnen“.</div>')
       + '<div class="qr-info">' + fmt(amt) + ' an <b>' + esc(handle) + '</b></div>'
       + '<a class="pp-open" href="' + esc(url) + '" target="_blank" rel="noopener">In PayPal öffnen</a>'
-      + '<div class="hint">Mit der Kamera/PayPal-App scannen, um genau ' + fmt(amt) + ' zu senden. '
+      + '<div class="hint">Mit der Kamera scannen, um genau ' + fmt(amt) + ' zu senden. '
       + '<button type="button" class="link" data-act="paypal-setup">Empfänger ändern</button></div>'
       + '</div>';
-    // graceful fallback if the QR image can't load (e.g. offline)
-    var img = container.querySelector('.qr-img');
-    if (img) img.onerror = function () {
-      this.style.display = 'none';
-      var info = container.querySelector('.qr-info');
-      if (info) info.insertAdjacentHTML('beforebegin',
-        '<div class="hint">QR-Bild konnte nicht geladen werden (offline?). Nutze „In PayPal öffnen“.</div>');
-    };
   }
 
   // ================================================================ EVENTS
